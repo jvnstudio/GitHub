@@ -1,0 +1,25 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git --version)",
+      "Bash(git config *)",
+      "Bash(git clone *)",
+      "Bash(git ls-tree *)",
+      "Bash(git checkout *)",
+      "Bash(git sparse-checkout *)",
+      "Bash(pwd && rm -rf scca && ls)",
+      "Bash(wsl.exe -l -v)",
+      "Bash(wsl.exe -d Ubuntu -e bash -c \"cd ~/scca && mv 'TASK 1 — ADD REVERSE ' 'TASK 1 - ADD REVERSE - FORWARD BREAK-AND-INSPECT' && mv 'TASK 1 - ADD REVERSE - FORWARD BREAK-AND-INSPECT/FORWARD BREAK-AND-INSPECT.md' 'TASK 1 - ADD REVERSE - FORWARD BREAK-AND-INSPECT.md' && rmdir 'TASK 1 - ADD REVERSE - FORWARD BREAK-AND-INSPECT' && rm -rf .git && echo RENAMED\")",
+      "Bash(wsl.exe -d Ubuntu -e bash -c \"cd ~/scca && ls -la | grep -i TASK\")",
+      "Bash(wsl.exe -d Ubuntu -e bash -c \"cd ~/scca && ls -la 'TASK 1 - ADD REVERSE - FORWARD BREAK-AND-INSPECT' | cat -A\")",
+      "Bash(wsl.exe -d Ubuntu -e bash -c \"cp -r ~/scca/. /mnt/c/GitHub/scca/ && echo COPIED\")",
+      "Bash(git pull *)",
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)",
+      "Bash(git push *)"
+    ],
+    "additionalDirectories": [
+      "C:\\GitHub\\scca"
+    ]
+  }
+}
