@@ -5,3 +5,6 @@ terraform/*.tfstate
 terraform/*.tfstate.*
 terraform/terraform.tfvars
 terraform/tfplan
+landing-zone/.fabric/
+landing-zone/.fast.env
+landing-zone/generated/
