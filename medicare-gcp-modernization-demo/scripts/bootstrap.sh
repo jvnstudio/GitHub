@@ -17,6 +17,23 @@ POOL_ID="github-actions"
 PROVIDER_ID="github"
 OUTPUT_FILE="$(cd "$(dirname "$0")/.." && pwd)/.bootstrap.env"
 
+retry() {
+  local attempts="$1"
+  local delay="$2"
+  shift 2
+
+  local n=1
+  until "$@"; do
+    if (( n >= attempts )); then
+      echo "Command failed after ${attempts} attempts: $*" >&2
+      return 1
+    fi
+    echo "  Attempt ${n}/${attempts} failed; retrying in ${delay}s..." >&2
+    sleep "${delay}"
+    ((n++))
+  done
+}
+
 printf '\n==> Configuring project %s\n' "${PROJECT_ID}"
 gcloud config set project "${PROJECT_ID}" >/dev/null
 
@@ -49,6 +66,12 @@ if ! gcloud iam service-accounts describe "${SA_EMAIL}" >/dev/null 2>&1; then
     --display-name="Medicare modernization demo Terraform"
 fi
 
+# IAM service-account creation is eventually consistent. Wait until the
+# identity is visible before using it in project IAM bindings.
+printf '\n==> Waiting for Terraform service account to propagate\n'
+retry 12 5 gcloud iam service-accounts describe "${SA_EMAIL}" --quiet >/dev/null
+printf 'Service account email: %s\n' "${SA_EMAIL}"
+
 # These are intentionally project-scoped demo roles. Production should split
 # plan/apply identities and reduce permissions further, as FAST itself does.
 ROLES=(
@@ -63,7 +86,8 @@ ROLES=(
 
 printf '\n==> Granting demo Terraform roles\n'
 for role in "${ROLES[@]}"; do
-  gcloud projects add-iam-policy-binding "${PROJECT_ID}" \
+  echo "  ${role}"
+  retry 12 5 gcloud projects add-iam-policy-binding "${PROJECT_ID}" \
     --member="serviceAccount:${SA_EMAIL}" \
     --role="${role}" \
     --condition=None \
@@ -96,7 +120,7 @@ POOL_NAME="$(gcloud iam workload-identity-pools describe "${POOL_ID}" --location
 WIF_PROVIDER="projects/${PROJECT_NUMBER}/locations/global/workloadIdentityPools/${POOL_ID}/providers/${PROVIDER_ID}"
 
 printf '\n==> Allowing only %s to impersonate the Terraform service account\n' "${GITHUB_REPO}"
-gcloud iam service-accounts add-iam-policy-binding "${SA_EMAIL}" \
+retry 12 5 gcloud iam service-accounts add-iam-policy-binding "${SA_EMAIL}" \
   --role="roles/iam.workloadIdentityUser" \
   --member="principalSet://iam.googleapis.com/${POOL_NAME}/attribute.repository/${GITHUB_REPO}" \
   --quiet >/dev/null
