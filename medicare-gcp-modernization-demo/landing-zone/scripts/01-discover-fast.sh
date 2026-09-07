@@ -47,12 +47,18 @@ BILLING_COUNT="$(printf '%s\n' "${BILLING_ROWS}" | sed '/^$/d' | wc -l | tr -d '
 
 printf '\n--- Selection guidance ---\n'
 if [[ "${ORG_COUNT}" == "1" ]]; then
-  IFS=',' read -r ORG_ID ORG_DOMAIN ORG_CUSTOMER_ID <<<"${ORG_ROWS}"
+  IFS=',' read -r ORG_ID ORG_DISPLAY_NAME ORG_CUSTOMER_ID <<<"${ORG_ROWS}"
   printf 'export FAST_ORG_ID=%q\n' "${ORG_ID}"
-  printf 'export FAST_ORG_DOMAIN=%q\n' "${ORG_DOMAIN}"
+  printf 'export FAST_ORG_DISPLAY_NAME=%q\n' "${ORG_DISPLAY_NAME}"
+  # gcloud organizations list returns DISPLAY_NAME, which is not guaranteed to
+  # be a DNS/Cloud Identity domain. FAST only requires organization.id in the
+  # Stage 0 schema, so leave domain unset unless you know the actual domain.
+  printf "export FAST_ORG_DOMAIN=''\n"
   printf 'export FAST_CUSTOMER_ID=%q\n' "${ORG_CUSTOMER_ID}"
 else
-  echo "Multiple organizations found. Choose the correct row and export FAST_ORG_ID, FAST_ORG_DOMAIN and FAST_CUSTOMER_ID."
+  echo "Multiple organizations found. Choose the correct row and export FAST_ORG_ID."
+  echo "Set FAST_ORG_DOMAIN only if you know the actual Cloud Identity/Workspace domain."
+  echo "Set FAST_CUSTOMER_ID if DIRECTORY_CUSTOMER_ID is present."
 fi
 
 if [[ "${BILLING_COUNT}" == "1" ]]; then
@@ -70,6 +76,9 @@ cat <<'EOF'
 
 FAST recommends using a Google Group for the organization-admin principal in production.
 For this personal demo, a user principal is supported and keeps the setup simpler.
+
+Important: organization DISPLAY_NAME is not assumed to be a domain. FAST Stage 0
+only requires the organization ID; domain/customer ID are included only when known.
 
 Next, export the values printed above (or choose the correct organization/billing account if multiple rows were returned), then run:
   ./landing-zone/scripts/02-prepare-stage0.sh
