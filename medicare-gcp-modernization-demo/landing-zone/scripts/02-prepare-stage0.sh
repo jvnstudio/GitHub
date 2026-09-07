@@ -2,12 +2,17 @@
 set -euo pipefail
 
 : "${FAST_ORG_ID:?Set FAST_ORG_ID from 01-discover-fast.sh output}"
-: "${FAST_ORG_DOMAIN:?Set FAST_ORG_DOMAIN from 01-discover-fast.sh output}"
-: "${FAST_CUSTOMER_ID:?Set FAST_CUSTOMER_ID from 01-discover-fast.sh output}"
 : "${FAST_BILLING_ACCOUNT:?Set FAST_BILLING_ACCOUNT from 01-discover-fast.sh output}"
 : "${FAST_ADMIN_PRINCIPAL:?Set FAST_ADMIN_PRINCIPAL, e.g. user:you@example.com}"
 : "${FAST_ADMIN_EMAIL:?Set FAST_ADMIN_EMAIL, e.g. you@example.com}"
 : "${FAST_BOOTSTRAP_PROJECT:?Set FAST_BOOTSTRAP_PROJECT to the temporary billed project}"
+
+# Optional organization metadata. FAST Stage 0's schema requires organization.id,
+# while domain and directory customer ID are optional. Do not confuse the gcloud
+# organization DISPLAY_NAME with an actual Cloud Identity / Workspace domain.
+FAST_ORG_DOMAIN="${FAST_ORG_DOMAIN:-}"
+FAST_CUSTOMER_ID="${FAST_CUSTOMER_ID:-}"
+FAST_ORG_DISPLAY_NAME="${FAST_ORG_DISPLAY_NAME:-}"
 
 FAST_PREFIX="${FAST_PREFIX:-medlz}"
 FAST_PRIMARY_REGION="${FAST_PRIMARY_REGION:-us-east4}"
@@ -63,13 +68,18 @@ else
 fi
 
 printf '\n==> Generating Medicare FAST defaults\n'
-cat >"${DEFAULTS_FILE}" <<EOF
-global:
-  billing_account: ${FAST_BILLING_ACCOUNT}
-  organization:
-    domain: ${FAST_ORG_DOMAIN}
-    id: ${FAST_ORG_ID}
-    customer_id: ${FAST_CUSTOMER_ID}
+{
+  printf 'global:\n'
+  printf '  billing_account: %s\n' "${FAST_BILLING_ACCOUNT}"
+  printf '  organization:\n'
+  printf '    id: %s\n' "${FAST_ORG_ID}"
+  if [[ -n "${FAST_ORG_DOMAIN}" ]]; then
+    printf '    domain: %s\n' "${FAST_ORG_DOMAIN}"
+  fi
+  if [[ -n "${FAST_CUSTOMER_ID}" ]]; then
+    printf '    customer_id: %s\n' "${FAST_CUSTOMER_ID}"
+  fi
+  cat <<EOF
 observability:
   project_id: \$project_ids:log-0
   number: \$project_numbers:log-0
@@ -131,6 +141,7 @@ output_files:
       prefix: 2-project-factory
       service_account: \$iam_principals:service_accounts/iac-0/iac-pf-ro
 EOF
+} >"${DEFAULTS_FILE}"
 
 cat >"${CICD_FILE}" <<EOF
 org-setup:
@@ -169,6 +180,7 @@ EOF
 cat >"${ENV_FILE}" <<EOF
 export FAST_VERSION='${FAST_VERSION}'
 export FAST_ORG_ID='${FAST_ORG_ID}'
+export FAST_ORG_DISPLAY_NAME='${FAST_ORG_DISPLAY_NAME}'
 export FAST_ORG_DOMAIN='${FAST_ORG_DOMAIN}'
 export FAST_CUSTOMER_ID='${FAST_CUSTOMER_ID}'
 export FAST_BILLING_ACCOUNT='${FAST_BILLING_ACCOUNT}'
@@ -188,6 +200,8 @@ printf '  Stage 0:       %s\n' "${STAGE0_DIR}"
 printf '  Defaults:      %s\n' "${DEFAULTS_FILE}"
 printf '  CI/CD config:  %s\n' "${CICD_FILE}"
 printf '  Environment:   %s\n' "${ENV_FILE}"
+printf '  Org domain:    %s\n' "${FAST_ORG_DOMAIN:-<not set>}"
+printf '  Customer ID:   %s\n' "${FAST_CUSTOMER_ID:-<not set>}"
 printf '\nNext:\n'
 printf '  source %q\n' "${ENV_FILE}"
 printf '  ./landing-zone/scripts/03-grant-bootstrap-roles.sh\n'
