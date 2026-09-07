@@ -1,0 +1,77 @@
+name: Medicare GCP modernization demo
+
+on:
+  pull_request:
+    paths:
+      - "medicare-gcp-modernization-demo/**"
+      - ".github/workflows/medicare-demo-terraform.yml"
+  workflow_dispatch:
+    inputs:
+      operation:
+        description: "Terraform operation"
+        required: true
+        default: "plan"
+        type: choice
+        options:
+          - plan
+          - apply
+          - destroy
+
+permissions:
+  contents: read
+  id-token: write
+  pull-requests: write
+
+jobs:
+  terraform:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: medicare-gcp-modernization-demo/terraform
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Authenticate to Google Cloud with Workload Identity Federation
+        uses: google-github-actions/auth@v3
+        with:
+          workload_identity_provider: ${{ vars.GCP_WIF_PROVIDER }}
+          service_account: ${{ vars.GCP_TF_SERVICE_ACCOUNT }}
+
+      - name: Set up gcloud
+        uses: google-github-actions/setup-gcloud@v3
+
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@v4
+        with:
+          terraform_version: 1.12.2
+
+      - name: Terraform format
+        run: terraform fmt -check -recursive
+
+      - name: Terraform init
+        run: terraform init -input=false -backend-config="bucket=${{ vars.TF_STATE_BUCKET }}"
+
+      - name: Terraform validate
+        run: terraform validate
+
+      - name: Terraform plan
+        if: github.event_name == 'pull_request' || inputs.operation == 'plan' || inputs.operation == 'apply'
+        run: |
+          terraform plan \
+            -input=false \
+            -var="project_id=${{ vars.GCP_PROJECT_ID }}" \
+            -out=tfplan
+
+      - name: Terraform apply
+        if: github.event_name == 'workflow_dispatch' && inputs.operation == 'apply'
+        run: terraform apply -input=false -auto-approve tfplan
+
+      - name: Terraform destroy
+        if: github.event_name == 'workflow_dispatch' && inputs.operation == 'destroy'
+        run: |
+          terraform destroy \
+            -input=false \
+            -auto-approve \
+            -var="project_id=${{ vars.GCP_PROJECT_ID }}"
