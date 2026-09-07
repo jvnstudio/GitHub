@@ -1,0 +1,12 @@
+project_id     = "REPLACE_WITH_YOUR_GCP_PROJECT_ID"
+primary_region = "us-east4"
+dr_region      = "us-central1"
+
+# Default lab: regional VM MIG + regional GKE + Cloud Storage.
+vm_target_size = 3
+enable_gke     = true
+
+# Turn these on only when you want to demonstrate the extra capability/cost.
+enable_dr        = false
+enable_filestore = false
+enable_local_ssd = false
