@@ -1,0 +1,4 @@
+[submodule "oci-appdev/oci-audit"]
+	path = oci-appdev/oci-audit
+	url = https://github.com/oci-appdev/oci-audit.git
+
